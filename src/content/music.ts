@@ -26,7 +26,7 @@ export const SINGLES_LIST = [
   {
     name: "Eclipsi (Prod. by Kiko de Bidda)",
     year: 2024,
-    tags: ["The Alqemist"],
+    tags: ["Single"],
     url: "https://open.spotify.com/track/7fnrJqER1MXVyKzZEyp8Fr?si=881a26383e9841d4",
     soundcloudUrl: "https://soundcloud.com/itsandreapiano/eclipsi",
     waveform: "/waveforms/eclipsi.json",

@@ -50,7 +50,7 @@ export default function FeaturesSection() {
                 <li>
                   <Link href="#link" className="hover:text-accent-foreground">
                     <MapPin className="size-5 mr-2 inline" />
-                    <span>Poznan, Poland</span>
+                    <span>Poznań, Poland</span>
                   </Link>
                 </li>
               </ul>
