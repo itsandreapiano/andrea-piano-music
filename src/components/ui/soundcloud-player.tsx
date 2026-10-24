@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import type { PointerEvent as ReactPointerEvent } from "react";
+
+import { getCookieConsent } from "@/components/CookieBanner";
 
 type WaveformData = {
   width: number;
@@ -89,11 +92,17 @@ function loadSoundCloudAPI(): Promise<WidgetAPI> {
         return;
       }
 
-      script.addEventListener("load", onLoad, { once: true });
-      script.addEventListener("error", onError, { once: true });
+      script.addEventListener("load", onLoad, {
+        once: true,
+      });
+
+      script.addEventListener("error", onError, {
+        once: true,
+      });
 
       if (!existing) {
         script.src = "https://w.soundcloud.com/player/api.js";
+
         script.async = true;
         document.body.appendChild(script);
       }
@@ -116,7 +125,7 @@ function safelyPause(player: ActivePlayer) {
   try {
     player.widget.pause();
   } catch {
-    // Ignore SoundCloud errors during iframe teardown.
+    // Ignore errors during iframe teardown.
   }
 }
 
@@ -129,16 +138,15 @@ function pauseOtherPlayers(current: ActivePlayer) {
       continue;
     }
 
-    // Pause SoundCloud playback
     safelyPause(player);
-
-    // Immediately synchronize the previous player's React state
     player.onPause();
   }
 }
 
 function formatTime(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return "0:00";
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "0:00";
+  }
 
   const seconds = Math.floor(ms / 1000);
 
@@ -160,17 +168,12 @@ function normalizeWaveform(data: WaveformData, barCount: number): number[] {
 
     const segment = data.samples.slice(start, end);
 
-    // Average amplitude instead of maximum peak
     const average =
       segment.reduce((sum, value) => sum + value, 0) / segment.length;
 
-    // Normalize to a value between 0 and 1
     const normalized = Math.max(0, Math.min(1, average / data.height));
 
-    // Increase contrast between quiet and loud sections
     const contrast = Math.pow(normalized, 5.3);
-
-    // Boost bar heights while preserving contrast
     const heightBoost = 1.8;
 
     return Math.max(3, Math.min(100, contrast * 100 * heightBoost));
@@ -184,6 +187,7 @@ export default function SoundCloudPlayer({
   barCount = 100,
 }: SoundCloudPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const widgetRef = useRef<SoundCloudWidget | null>(null);
 
   const positionRef = useRef(0);
@@ -194,13 +198,37 @@ export default function SoundCloudPlayer({
   const draggingRef = useRef(false);
   const dragProgressRef = useRef(0);
 
+  const [mediaConsent, setMediaConsent] = useState(false);
+
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+
   const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
+
   const [previewProgress, setPreviewProgress] = useState<number | null>(null);
+
   const [error, setError] = useState<string | null>(null);
+
+  // Keep media consent synchronized with the cookie banner.
+  useEffect(() => {
+    const updateConsent = () => {
+      setMediaConsent(getCookieConsent()?.media === true);
+    };
+
+    updateConsent();
+
+    window.addEventListener("cookie-consent-updated", updateConsent);
+
+    window.addEventListener("storage", updateConsent);
+
+    return () => {
+      window.removeEventListener("cookie-consent-updated", updateConsent);
+
+      window.removeEventListener("storage", updateConsent);
+    };
+  }, []);
 
   const safeBarCount = Math.max(
     1,
@@ -230,13 +258,13 @@ export default function SoundCloudPlayer({
     return normalizeWaveform(waveformData, safeBarCount);
   }, [waveformData, safeBarCount]);
 
-  // Load waveform data.
+  // Load waveform data only after media consent.
   useEffect(() => {
+    if (!mediaConsent || !waveformUrl) {
+      return;
+    }
+
     const controller = new AbortController();
-
-    setWaveformData(null);
-
-    if (!waveformUrl) return;
 
     fetch(waveformUrl, {
       signal: controller.signal,
@@ -268,13 +296,16 @@ export default function SoundCloudPlayer({
       });
 
     return () => controller.abort();
-  }, [waveformUrl]);
+  }, [waveformUrl, mediaConsent]);
 
-  // Initialize and manage the SoundCloud widget.
+  // Initialize SoundCloud only after media consent.
   useEffect(() => {
-    if (!trackUrl) return;
+    if (!mediaConsent || !trackUrl) {
+      return;
+    }
 
     const iframe = iframeRef.current;
+
     if (!iframe) return;
 
     let active = true;
@@ -283,22 +314,11 @@ export default function SoundCloudPlayer({
 
     let readyTimer: ReturnType<typeof setInterval> | null = null;
 
-    setReady(false);
-    setPlaying(false);
-    setPosition(0);
-    setDuration(0);
-    setError(null);
-    setPreviewProgress(null);
-
-    positionRef.current = 0;
-    durationRef.current = 0;
-    playingRef.current = false;
-    draggingRef.current = false;
-    timestampRef.current = performance.now();
-
     loadSoundCloudAPI()
       .then((Widget) => {
-        if (!active || !isIframeAvailable(iframe)) return;
+        if (!active || !isIframeAvailable(iframe)) {
+          return;
+        }
 
         const widget = Widget(iframe);
 
@@ -306,7 +326,9 @@ export default function SoundCloudPlayer({
           widget,
           iframe,
           onPause: () => {
-            if (!active || !playingRef.current) return;
+            if (!active || !playingRef.current) {
+              return;
+            }
 
             positionRef.current = Math.min(
               durationRef.current || Infinity,
@@ -325,7 +347,9 @@ export default function SoundCloudPlayer({
         activePlayers.add(player);
 
         const updateDuration = () => {
-          if (!active || !isIframeAvailable(iframe)) return;
+          if (!active || !isIframeAvailable(iframe)) {
+            return;
+          }
 
           widget.getDuration((ms) => {
             if (!active || !Number.isFinite(ms) || ms <= 0) {
@@ -351,6 +375,7 @@ export default function SoundCloudPlayer({
 
           playingRef.current = true;
           timestampRef.current = performance.now();
+
           setPlaying(true);
 
           if (player) {
@@ -383,6 +408,7 @@ export default function SoundCloudPlayer({
           }
 
           positionRef.current = data.currentPosition;
+
           timestampRef.current = performance.now();
         });
 
@@ -404,6 +430,7 @@ export default function SoundCloudPlayer({
           playingRef.current = false;
           setPlaying(false);
           setReady(false);
+
           setError("Unable to play this track.");
         });
 
@@ -429,18 +456,16 @@ export default function SoundCloudPlayer({
       if (player) {
         activePlayers.delete(player);
 
-        // Detach callbacks before React removes the iframe.
         if (events) {
           for (const event of Object.values(events)) {
             try {
               player.widget.unbind(event);
             } catch {
-              // The iframe may already be unavailable.
+              // Ignore teardown errors.
             }
           }
         }
 
-        // Pause only while the iframe is still accessible.
         safelyPause(player);
       }
 
@@ -450,10 +475,33 @@ export default function SoundCloudPlayer({
 
       playingRef.current = false;
     };
-  }, [trackUrl]);
+  }, [trackUrl, mediaConsent]);
+
+  // Reset playback state when consent changes.
+  useEffect(() => {
+    setReady(false);
+    setPlaying(false);
+    setPosition(0);
+    setDuration(0);
+    setError(null);
+    setPreviewProgress(null);
+
+    positionRef.current = 0;
+    durationRef.current = 0;
+    playingRef.current = false;
+    draggingRef.current = false;
+    timestampRef.current = performance.now();
+
+    if (!mediaConsent) {
+      widgetRef.current = null;
+      setWaveformData(null);
+    }
+  }, [mediaConsent, trackUrl]);
 
   // Smooth visual playback progress.
   useEffect(() => {
+    if (!mediaConsent) return;
+
     let frame = 0;
     let lastSync = 0;
 
@@ -492,16 +540,13 @@ export default function SoundCloudPlayer({
 
             const difference = actualPosition - predictedPosition;
 
-            // Ignore tiny timing differences.
             if (Math.abs(difference) < 150) {
               return;
             }
 
-            // Correct moderate drift gradually.
             if (Math.abs(difference) < 1500) {
               positionRef.current = predictedPosition + difference * 0.2;
             } else {
-              // Large differences can indicate seeking.
               positionRef.current = actualPosition;
             }
 
@@ -516,13 +561,20 @@ export default function SoundCloudPlayer({
     frame = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [mediaConsent]);
 
   const togglePlayback = useCallback(() => {
     const widget = widgetRef.current;
     const iframe = iframeRef.current;
 
-    if (!widget || !iframe || !isIframeAvailable(iframe) || !ready || error) {
+    if (
+      !mediaConsent ||
+      !widget ||
+      !iframe ||
+      !isIframeAvailable(iframe) ||
+      !ready ||
+      error
+    ) {
       return;
     }
 
@@ -540,8 +592,8 @@ export default function SoundCloudPlayer({
     } else {
       playingRef.current = true;
       timestampRef.current = performance.now();
-      setPlaying(true);
 
+      setPlaying(true);
       widget.play();
 
       for (const player of activePlayers) {
@@ -551,7 +603,7 @@ export default function SoundCloudPlayer({
         }
       }
     }
-  }, [ready, error]);
+  }, [ready, error, mediaConsent]);
 
   const seek = useCallback(
     (percentage: number) => {
@@ -559,6 +611,7 @@ export default function SoundCloudPlayer({
       const iframe = iframeRef.current;
 
       if (
+        !mediaConsent ||
         !widget ||
         !iframe ||
         !isIframeAvailable(iframe) ||
@@ -574,11 +627,11 @@ export default function SoundCloudPlayer({
 
       positionRef.current = nextPosition;
       timestampRef.current = performance.now();
-      setPosition(nextPosition);
 
+      setPosition(nextPosition);
       widget.seekTo(nextPosition);
     },
-    [ready],
+    [ready, mediaConsent],
   );
 
   const getPointerProgress = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -593,7 +646,9 @@ export default function SoundCloudPlayer({
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!ready || duration <= 0) return;
+    if (!mediaConsent || !ready || duration <= 0) {
+      return;
+    }
 
     if (event.pointerType === "mouse" && event.button !== 0) {
       return;
@@ -610,7 +665,6 @@ export default function SoundCloudPlayer({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    // Only preview while actively dragging.
     if (!draggingRef.current || !ready || duration <= 0) {
       return;
     }
@@ -629,7 +683,6 @@ export default function SoundCloudPlayer({
     draggingRef.current = false;
     dragProgressRef.current = percentage;
 
-    // Seek only when the pointer is released.
     seek(percentage);
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -659,8 +712,7 @@ export default function SoundCloudPlayer({
       aria-label={`Audio player for ${title}`}
       className="relative w-full"
     >
-      {/* Hidden SoundCloud playback engine */}
-      {trackUrl && (
+      {mediaConsent && trackUrl && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0 left-0 h-[166px] w-full overflow-hidden opacity-0"
@@ -678,132 +730,154 @@ export default function SoundCloudPlayer({
         </div>
       )}
 
-      <div className="relative flex items-center gap-3">
-        {/* Play / Pause button */}
-        <button
-          type="button"
-          onClick={togglePlayback}
-          disabled={!ready || !!error}
-          aria-label={playing ? `Pause ${title}` : `Play ${title}`}
-          className="relative -top-2.5 flex h-9 w-9 cursor-pointer shrink-0 items-center justify-center rounded-full border border-white bg-white text-black transition-all duration-200 hover:bg-white/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {playing ? (
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
-          ) : (
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-        </button>
+      {!mediaConsent ? (
+        <div className="flex min-h-24 flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-5 text-center">
+          <p className="text-xs leading-relaxed text-white/60">
+            Enable third-party media to listen to this track.
+          </p>
 
-        {/* Waveform and timestamps */}
-        <div className="min-w-0 flex-1">
-          <div
-            role="slider"
-            tabIndex={ready && duration > 0 ? 0 : -1}
-            aria-label={`Seek within ${title}`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress)}
-            aria-valuetext={formatTime(position)}
-            aria-disabled={!ready || duration <= 0}
-            onKeyDown={(event) => {
-              if (!ready || duration <= 0) return;
-
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                seek(progress + 5);
-              }
-
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                seek(progress - 5);
-              }
-
-              if (event.key === "Home") {
-                event.preventDefault();
-                seek(0);
-              }
-
-              if (event.key === "End") {
-                event.preventDefault();
-                seek(100);
-              }
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new Event("open-cookie-settings"));
             }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerCancel}
-            className="relative h-20 w-full cursor-pointer touch-none select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            className="cursor-pointer rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-white/10"
           >
-            {/* Inactive waveform */}
-            <div className="absolute inset-0 flex items-center gap-[4px]">
-              {bars.map((height, index) => (
-                <div
-                  key={index}
-                  className="min-w-0 flex-1 rounded-full bg-[#555555]"
-                  style={{
-                    height: `${height}%`,
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Active waveform */}
-            <div
-              className="pointer-events-none absolute inset-0 overflow-hidden"
-              style={{
-                clipPath: `inset(0 ${100 - displayedProgress}% 0 0)`,
-              }}
+            Cookie Settings
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="relative flex items-center gap-3">
+            {/* Play / Pause button */}
+            <button
+              type="button"
+              onClick={togglePlayback}
+              disabled={!ready || !!error}
+              aria-label={playing ? `Pause ${title}` : `Play ${title}`}
+              className="relative -top-2.5 flex h-9 w-9 cursor-pointer shrink-0 items-center justify-center rounded-full border border-white bg-white text-black transition-all duration-200 hover:bg-white/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <div className="absolute inset-0 flex items-center gap-[2px]">
-                {bars.map((height, index) => (
-                  <div
-                    key={index}
-                    className="min-w-0 flex-1 rounded-full bg-white"
-                    style={{
-                      height: `${height}%`,
-                    }}
-                  />
-                ))}
+              {playing ? (
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Waveform and timestamps */}
+            <div className="min-w-0 flex-1">
+              <div
+                role="slider"
+                tabIndex={ready && duration > 0 ? 0 : -1}
+                aria-label={`Seek within ${title}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
+                aria-valuetext={formatTime(position)}
+                aria-disabled={!ready || duration <= 0}
+                onKeyDown={(event) => {
+                  if (!ready || duration <= 0) {
+                    return;
+                  }
+
+                  if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    seek(progress + 5);
+                  }
+
+                  if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    seek(progress - 5);
+                  }
+
+                  if (event.key === "Home") {
+                    event.preventDefault();
+                    seek(0);
+                  }
+
+                  if (event.key === "End") {
+                    event.preventDefault();
+                    seek(100);
+                  }
+                }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                className="relative h-20 w-full cursor-pointer touch-none select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                {/* Inactive waveform */}
+                <div className="absolute inset-0 flex items-center gap-[4px]">
+                  {bars.map((height, index) => (
+                    <div
+                      key={index}
+                      className="min-w-0 flex-1 rounded-full bg-[#555555]"
+                      style={{
+                        height: `${height}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Active waveform */}
+                <div
+                  className="pointer-events-none absolute inset-0 overflow-hidden"
+                  style={{
+                    clipPath: `inset(0 ${100 - displayedProgress}% 0 0)`,
+                  }}
+                >
+                  <div className="absolute inset-0 flex items-center gap-[2px]">
+                    {bars.map((height, index) => (
+                      <div
+                        key={index}
+                        className="min-w-0 flex-1 rounded-full bg-white"
+                        style={{
+                          height: `${height}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Timestamps */}
+              <div className="mt-1 flex justify-between text-xs tabular-nums text-white/40">
+                <span>
+                  {formatTime(
+                    draggingRef.current && previewProgress !== null
+                      ? (previewProgress / 100) * duration
+                      : position,
+                  )}
+                </span>
+
+                <span>{formatTime(duration)}</span>
               </div>
             </div>
           </div>
 
-          {/* Timestamps */}
-          <div className="mt-1 flex justify-between text-xs tabular-nums text-white/40">
-            <span>
-              {formatTime(
-                draggingRef.current && previewProgress !== null
-                  ? (previewProgress / 100) * duration
-                  : position,
-              )}
-            </span>
-
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <p role="alert" className="mt-2 text-xs text-red-400">
-          {error}
-        </p>
+          {error && (
+            <p role="alert" className="mt-2 text-xs text-red-400">
+              {error}
+            </p>
+          )}
+        </>
       )}
     </div>
   );

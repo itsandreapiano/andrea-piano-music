@@ -142,7 +142,7 @@ export default function ContentSection() {
 
             <ScrollView>
               <div className="space-y-2 mt-16">
-                <p>I love you, truly.</p>
+                <p>Love you, truly.</p>
                 <p>Andrea</p>
               </div>
             </ScrollView>

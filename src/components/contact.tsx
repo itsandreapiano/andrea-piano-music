@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { ScrollView } from "./scroll-view";
 
-export default function FeaturesSection() {
+export default function Contact() {
   return (
     <section className="py-16 md:py-32 bg-gray-50 dark:bg-transparent">
       <div className="mx-auto max-w-6xl px-6">
@@ -118,10 +118,39 @@ export default function FeaturesSection() {
 
                   <div>
                     <Label htmlFor="msg">Message</Label>
-                    <Textarea id="msg" rows={3} />
+                    <Textarea id="msg" name="message" rows={3} required />
                   </div>
 
-                  <Button>Submit</Button>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="privacy"
+                      name="privacy"
+                      required
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border border-input accent-foreground"
+                    />
+
+                    <Label
+                      htmlFor="privacy"
+                      className="text-muted-foreground cursor-pointer text-xs leading-relaxed font-normal"
+                    >
+                      <span>
+                        I acknowledge that my personal information will be
+                        processed to respond to my message, as described in the{" "}
+                        <Link
+                          href="/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-foreground underline underline-offset-4 transition-colors hover:text-primary"
+                        >
+                          Privacy Policy
+                        </Link>
+                        .
+                      </span>
+                    </Label>
+                  </div>
+
+                  <Button type="submit">Submit</Button>
                 </form>
               </Card>
             </ScrollView>

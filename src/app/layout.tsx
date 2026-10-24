@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "@/styles/globals.css";
 import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
+import { CookieBanner } from "@/components/CookieBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <HeroHeader />
+          <CookieBanner />
           {children}
           <FooterSection />
         </ThemeProvider>

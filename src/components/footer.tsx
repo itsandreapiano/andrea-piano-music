@@ -115,10 +115,33 @@ export default function FooterSection() {
         </ScrollView>
 
         {/* Copyright */}
+
+        {/* Copyright & legal */}
         <ScrollView delay={0.2} viewMargin="0px 0px -20px 0px">
-          <p className="text-muted-foreground text-center text-sm">
-            © {new Date().getFullYear()} Andrea Piano. All rights reserved.
-          </p>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-muted-foreground text-sm">
+              © {new Date().getFullYear()} Andrea Piano. All rights reserved.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+              <Link
+                href="/privacy"
+                className="text-muted-foreground/70 text-xs transition-colors duration-150"
+              >
+                Privacy Policy
+              </Link>
+
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new Event("open-cookie-settings"))
+                }
+                className="text-muted-foreground/70 cursor-pointer text-xs transition-colors duration-150"
+              >
+                Cookie Settings
+              </button>
+            </div>
+          </div>
         </ScrollView>
       </div>
     </footer>
