@@ -271,7 +271,7 @@ export default function Contact() {
                   </Link>
                 </li>
 
-                <li>
+                {/* <li>
                   <Link
                     href="tel:+48600967307"
                     className="hover:text-accent-foreground"
@@ -279,7 +279,7 @@ export default function Contact() {
                     <PhoneCall className="size-5 mr-2 inline" />
                     <span>+48 600 967 307</span>
                   </Link>
-                </li>
+                </li> */}
 
                 <li>
                   <div>
