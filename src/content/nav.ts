@@ -1,5 +1,4 @@
 export const NAV_LINKS = [
-  { name: "Home", href: "/", visible: true },
   { name: "Music", href: "/music", visible: true },
   { name: "Videos", href: "/videos", visible: true },
   { name: "News", href: "/news", visible: true },

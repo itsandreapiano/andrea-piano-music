@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_EMAIL = "itsandreapiano@gmail.com";
-const LAST_UPDATED = "October 24, 2026";
+const LAST_UPDATED = "October 25, 2026";
 
 const emailLink = `mailto:${CONTACT_EMAIL}`;
 
@@ -222,10 +222,17 @@ export default function PrivacyPage() {
             </p>
 
             <p className="text-muted-foreground mt-4">
-              Contact form submissions are delivered to my email inbox using the
-              website&apos;s email delivery service. I do not use contact form
-              submissions to automatically subscribe you to my newsletter or to
-              send unrelated marketing messages.
+              Contact form submissions are processed through Brevo&apos;s
+              transactional email service and delivered to my Gmail inbox,
+              provided by Google. Brevo and Google may process the information
+              necessary to deliver, receive, and manage these messages.
+            </p>
+
+            <p className="text-muted-foreground mt-4">
+              I use this information solely to handle your inquiry and any
+              related correspondence. Submitting the contact form does not
+              subscribe you to my newsletter or authorize unrelated marketing
+              communications.
             </p>
 
             <p className="text-muted-foreground mt-4">

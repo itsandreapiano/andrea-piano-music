@@ -38,9 +38,11 @@ export function getCookieConsent(): CookieConsent | null {
 
     const parsed: unknown = JSON.parse(stored);
 
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
     if (
-      !parsed ||
-      typeof parsed !== "object" ||
       !("version" in parsed) ||
       !("analytics" in parsed) ||
       !("media" in parsed) ||
@@ -65,6 +67,7 @@ export function CookieBanner() {
   const [visible, setVisible] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [hasSavedConsent, setHasSavedConsent] = useState(false);
+  const [storageError, setStorageError] = useState(false);
 
   const [preferences, setPreferences] =
     useState<CookieConsent>(DEFAULT_CONSENT);
@@ -87,6 +90,7 @@ export function CookieBanner() {
 
       setPreferences(saved ?? DEFAULT_CONSENT);
       setHasSavedConsent(Boolean(saved));
+      setStorageError(false);
       setCustomizing(true);
       setVisible(true);
     };
@@ -112,26 +116,43 @@ export function CookieBanner() {
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(storedConsent));
+
+      // Confirm that the choice was actually persisted.
+      const saved = getCookieConsent();
+
+      if (
+        !saved ||
+        saved.analytics !== updatedConsent.analytics ||
+        saved.media !== updatedConsent.media
+      ) {
+        throw new Error("Consent could not be saved.");
+      }
+
+      setPreferences(updatedConsent);
+      setHasSavedConsent(true);
+      setStorageError(false);
+      setVisible(false);
+      setCustomizing(false);
+
+      window.dispatchEvent(
+        new CustomEvent(CONSENT_EVENT, {
+          detail: updatedConsent,
+        }),
+      );
     } catch {
-      // Storage may be unavailable in restricted browsers.
+      setStorageError(true);
+      setVisible(true);
+
+      // Do not claim that consent was saved.
+      // Existing saved preferences remain unchanged.
     }
-
-    setPreferences(updatedConsent);
-    setHasSavedConsent(true);
-    setVisible(false);
-    setCustomizing(false);
-
-    window.dispatchEvent(
-      new CustomEvent(CONSENT_EVENT, {
-        detail: updatedConsent,
-      }),
-    );
   }
 
   function closeSettings() {
     if (!hasSavedConsent) return;
 
     setPreferences(getCookieConsent() ?? DEFAULT_CONSENT);
+    setStorageError(false);
     setVisible(false);
     setCustomizing(false);
   }
@@ -176,7 +197,7 @@ export function CookieBanner() {
               allow. Learn more in the{" "}
               <Link
                 href="/privacy"
-                className="text-foreground underline underline-offset-4 transition-opacity hover:opacity-70"
+                className="text-foreground cursor-pointer underline underline-offset-4"
               >
                 Privacy Policy
               </Link>
@@ -277,13 +298,20 @@ export function CookieBanner() {
               Read the{" "}
               <Link
                 href="/privacy"
-                className="text-foreground underline underline-offset-4 transition-opacity"
+                className="text-foreground cursor-pointer underline underline-offset-4"
               >
                 Privacy Policy
               </Link>{" "}
               for more information.
             </p>
           </>
+        )}
+
+        {storageError && (
+          <p role="alert" className="mt-4 text-xs leading-relaxed text-red-500">
+            Your preferences could not be saved in this browser. Please check
+            your browser&apos;s storage settings and try again.
+          </p>
         )}
       </div>
     </div>
@@ -306,9 +334,14 @@ function PreferenceRow({
   onChange,
 }: PreferenceRowProps) {
   return (
-    <label className="flex items-center justify-between gap-4 py-4">
+    <label
+      className={`flex items-center justify-between gap-4 py-4 ${
+        disabled ? "cursor-default" : "cursor-pointer"
+      }`}
+    >
       <div>
         <p className="text-sm font-medium">{title}</p>
+
         <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
           {description}
         </p>
@@ -319,7 +352,7 @@ function PreferenceRow({
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange?.(event.target.checked)}
-        className="accent-primary size-4 shrink-0 cursor-pointer disabled:cursor-not-allowed"
+        className="accent-primary size-4 shrink-0 cursor-pointer disabled:cursor-default"
       />
     </label>
   );
