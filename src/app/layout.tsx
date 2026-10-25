@@ -5,6 +5,8 @@ import "@/styles/globals.css";
 import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { CookieBanner } from "@/components/CookieBanner";
+import { Suspense } from "react";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +45,11 @@ export default function RootLayout({
         >
           <HeroHeader />
           <CookieBanner />
+
+          <Suspense fallback={null}>
+            <GoogleAnalytics />
+          </Suspense>
+
           {children}
           <FooterSection />
         </ThemeProvider>
