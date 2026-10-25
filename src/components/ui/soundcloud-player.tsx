@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 import { getCookieConsent } from "@/components/CookieBanner";
+import { createSongAnalytics } from "@/lib/songAnalytics";
 
 type WaveformData = {
   width: number;
@@ -102,7 +102,6 @@ function loadSoundCloudAPI(): Promise<WidgetAPI> {
 
       if (!existing) {
         script.src = "https://w.soundcloud.com/player/api.js";
-
         script.async = true;
         document.body.appendChild(script);
       }
@@ -189,6 +188,10 @@ export default function SoundCloudPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const widgetRef = useRef<SoundCloudWidget | null>(null);
+
+  const analyticsRef = useRef<ReturnType<typeof createSongAnalytics> | null>(
+    null,
+  );
 
   const positionRef = useRef(0);
   const durationRef = useRef(0);
@@ -298,7 +301,7 @@ export default function SoundCloudPlayer({
     return () => controller.abort();
   }, [waveformUrl, mediaConsent]);
 
-  // Initialize SoundCloud only after media consent.
+  // Initialize SoundCloud and analytics only after media consent.
   useEffect(() => {
     if (!mediaConsent || !trackUrl) {
       return;
@@ -313,6 +316,13 @@ export default function SoundCloudPlayer({
     let events: WidgetAPI["Events"] | null = null;
 
     let readyTimer: ReturnType<typeof setInterval> | null = null;
+
+    const analytics = createSongAnalytics({
+      title,
+      trackUrl,
+    });
+
+    analyticsRef.current = analytics;
 
     loadSoundCloudAPI()
       .then((Widget) => {
@@ -329,6 +339,8 @@ export default function SoundCloudPlayer({
             if (!active || !playingRef.current) {
               return;
             }
+
+            analytics.pause();
 
             positionRef.current = Math.min(
               durationRef.current || Infinity,
@@ -373,6 +385,8 @@ export default function SoundCloudPlayer({
         widget.bind(Widget.Events.PLAY, () => {
           if (!active) return;
 
+          analytics.play();
+
           playingRef.current = true;
           timestampRef.current = performance.now();
 
@@ -385,6 +399,8 @@ export default function SoundCloudPlayer({
 
         widget.bind(Widget.Events.PAUSE, () => {
           if (!active) return;
+
+          analytics.pause();
 
           if (playingRef.current) {
             positionRef.current = Math.min(
@@ -410,10 +426,14 @@ export default function SoundCloudPlayer({
           positionRef.current = data.currentPosition;
 
           timestampRef.current = performance.now();
+
+          analytics.progress(data.currentPosition);
         });
 
         widget.bind(Widget.Events.FINISH, () => {
           if (!active) return;
+
+          analytics.finish();
 
           playingRef.current = false;
           positionRef.current = 0;
@@ -426,6 +446,8 @@ export default function SoundCloudPlayer({
 
         widget.bind(Widget.Events.ERROR, () => {
           if (!active) return;
+
+          analytics.pause();
 
           playingRef.current = false;
           setPlaying(false);
@@ -448,6 +470,12 @@ export default function SoundCloudPlayer({
 
     return () => {
       active = false;
+
+      analytics.destroy();
+
+      if (analyticsRef.current === analytics) {
+        analyticsRef.current = null;
+      }
 
       if (readyTimer) {
         clearInterval(readyTimer);
@@ -475,9 +503,9 @@ export default function SoundCloudPlayer({
 
       playingRef.current = false;
     };
-  }, [trackUrl, mediaConsent]);
+  }, [trackUrl, title, mediaConsent]);
 
-  // Reset playback state when consent changes.
+  // Reset playback state when media consent or track changes.
   useEffect(() => {
     setReady(false);
     setPlaying(false);
@@ -624,6 +652,8 @@ export default function SoundCloudPlayer({
       const clamped = Math.max(0, Math.min(100, percentage));
 
       const nextPosition = (clamped / 100) * durationRef.current;
+
+      analyticsRef.current?.seek();
 
       positionRef.current = nextPosition;
       timestampRef.current = performance.now();
