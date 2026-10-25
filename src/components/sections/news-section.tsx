@@ -50,7 +50,7 @@ export default async function NewsSection() {
             <p className="text-muted-foreground">
               New music, exciting projects, and everything in between.
               <br />
-              What's boiling in the pot?
+              What&apos;s boiling in the pot?
             </p>
           </ScrollView>
         </div>

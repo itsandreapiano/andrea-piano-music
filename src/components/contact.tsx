@@ -24,11 +24,11 @@ export default function Contact() {
               <ScrollView delay={0.1}>
                 <p className="text-muted-foreground mt-6">
                   Music is all about connections, sharing ideas, and creating
-                  something together. I'm always open to meeting fellow
+                  something together. I&apos;m always open to meeting fellow
                   musicians, exploring new collaborations, and seeing where the
                   flow can take us. Got something in mind?{" "}
                   <span className="text-foreground ">
-                    I'd love to hear from you.
+                    I&apos;d love to hear from you.
                   </span>
                 </p>
               </ScrollView>
@@ -60,10 +60,11 @@ export default function Contact() {
             <ScrollView>
               <Card className="mx-auto mt-12 max-w-lg p-8 shadow-md sm:p-16 w-full">
                 <div>
-                  <h3 className="text-lg font-semibold">Let's connect</h3>
+                  <h3 className="text-lg font-semibold">Let&apos;s connect</h3>
                   <p className="text-muted-foreground mt-4 text-sm">
-                    Have an idea, a project, or simply something you'd like to
-                    share? Drop me a message and let's see where it goes.
+                    Have an idea, a project, or simply something you&apos;d like
+                    to share? Drop me a message and let&apos;s see where it
+                    goes.
                   </p>
                 </div>
 

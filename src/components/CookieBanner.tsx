@@ -218,9 +218,9 @@ export function CookieBanner() {
         ) : (
           <>
             <p className="text-muted-foreground mb-5 text-sm leading-relaxed">
-              Choose which optional technologies you'd like to allow. Essential
-              functionality is always enabled. You can change your choices
-              anytime.
+              Choose which optional technologies you&apos;d like to allow.
+              Essential functionality is always enabled. You can change your
+              choices anytime.
             </p>
 
             <div className="divide-border mb-6 divide-y border-y">
