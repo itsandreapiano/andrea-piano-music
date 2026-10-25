@@ -7,7 +7,7 @@ import { SINGLES_LIST } from "@/content/music";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import SoundCloudPlayer from "../ui/soundcloud-player";
 import SoundCloudArtwork from "../ui/soundcloud-artwork";
-import { trackSpotifyClick } from "@/lib/spotifyAnalytics";
+import { trackMediaEvent } from "@/lib/mediaAnalytics";
 
 const YEARS = [...new Set(SINGLES_LIST.map((single) => single.year))].sort(
   (a, b) => b - a,
@@ -203,9 +203,9 @@ export default function MusicSection() {
                                     rel="noopener noreferrer"
                                     aria-label={`Listen to ${single.name} on Spotify`}
                                     onClick={() =>
-                                      trackSpotifyClick({
-                                        songTitle: single.name,
-                                        spotifyUrl: single.url,
+                                      trackMediaEvent("spotify_click", {
+                                        title: single.name,
+                                        url: single.url,
                                       })
                                     }
                                     className="group text-foreground inline-flex items-center gap-2 text-sm font-medium transition-opacity hover:opacity-70"

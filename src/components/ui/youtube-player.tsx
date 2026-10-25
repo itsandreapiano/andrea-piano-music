@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getCookieConsent } from "@/components/CookieBanner";
+import { trackMediaEvent } from "@/lib/mediaAnalytics";
 
 type PlayerStateEvent = {
   data: number;
@@ -51,6 +53,7 @@ function loadYouTubeAPI(): Promise<YouTubeAPI> {
       if (window.YT?.Player) {
         resolve(window.YT);
       } else {
+        apiPromise = null;
         reject(new Error("YouTube API unavailable"));
       }
     };
@@ -74,20 +77,6 @@ function loadYouTubeAPI(): Promise<YouTubeAPI> {
   return apiPromise;
 }
 
-function hasMediaConsent(): boolean {
-  try {
-    const stored = localStorage.getItem("cookie-consent");
-
-    if (!stored) return false;
-
-    const consent = JSON.parse(stored);
-
-    return consent?.media === true;
-  } catch {
-    return false;
-  }
-}
-
 type YouTubePlayerProps = {
   videoId: string;
   title: string;
@@ -95,11 +84,12 @@ type YouTubePlayerProps = {
 
 export default function YouTubePlayer({ videoId, title }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [mediaConsent, setMediaConsent] = useState(false);
 
   useEffect(() => {
     const updateConsent = () => {
-      setMediaConsent(hasMediaConsent());
+      setMediaConsent(getCookieConsent()?.media === true);
     };
 
     updateConsent();
@@ -121,6 +111,24 @@ export default function YouTubePlayer({ videoId, title }: YouTubePlayerProps) {
     let active = true;
     let player: YouTubePlayerInstance | null = null;
 
+    // Track only one play per playback session.
+    let playReported = false;
+
+    const handleAnalyticsConsentChange = () => {
+      // Revoking Analytics consent resets the tracking session.
+      // It does not interrupt video playback.
+      if (getCookieConsent()?.analytics !== true) {
+        playReported = false;
+      }
+    };
+
+    window.addEventListener(
+      "cookie-consent-updated",
+      handleAnalyticsConsentChange,
+    );
+
+    window.addEventListener("storage", handleAnalyticsConsentChange);
+
     loadYouTubeAPI()
       .then((YT) => {
         if (!active || !containerRef.current) return;
@@ -138,12 +146,33 @@ export default function YouTubePlayer({ videoId, title }: YouTubePlayerProps) {
           },
           events: {
             onStateChange: (event) => {
+              if (!active) return;
+
+              // YouTube state 1 = PLAYING
               if (event.data === 1) {
+                // Pause other YouTube players.
                 players.forEach((other) => {
                   if (other !== event.target) {
                     other.pauseVideo();
                   }
                 });
+
+                // Track the first play of the current session.
+                if (!playReported && getCookieConsent()?.analytics === true) {
+                  trackMediaEvent("video_play", {
+                    title,
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                    videoId,
+                  });
+
+                  playReported = true;
+                }
+              }
+
+              // YouTube state 0 = ENDED
+              // A replay starts a new playback session.
+              if (event.data === 0) {
+                playReported = false;
               }
             },
           },
@@ -152,18 +181,27 @@ export default function YouTubePlayer({ videoId, title }: YouTubePlayerProps) {
         players.add(player);
       })
       .catch((error) => {
+        if (!active) return;
+
         console.error("YouTube player error:", error);
       });
 
     return () => {
       active = false;
 
+      window.removeEventListener(
+        "cookie-consent-updated",
+        handleAnalyticsConsentChange,
+      );
+
+      window.removeEventListener("storage", handleAnalyticsConsentChange);
+
       if (player) {
         players.delete(player);
         player.destroy();
       }
     };
-  }, [videoId, mediaConsent]);
+  }, [videoId, title, mediaConsent]);
 
   return (
     <div

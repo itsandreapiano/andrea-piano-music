@@ -7,6 +7,7 @@ import { VIDEOS_LIST } from "@/content/videos";
 import { ArrowUpRight, ChevronDown, Video } from "lucide-react";
 import { useEffect, useRef } from "react";
 import YouTubePlayer from "../ui/youtube-player";
+import { trackMediaEvent } from "@/lib/mediaAnalytics";
 
 const YEARS = [...new Set(VIDEOS_LIST.map((video) => video.year))].sort(
   (a, b) => b - a,
@@ -178,9 +179,19 @@ export default function VideosSection() {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-2 text-sm font-medium transition-opacity hover:opacity-60"
+                                    onClick={() =>
+                                      trackMediaEvent("youtube_click", {
+                                        title: video.name,
+                                        url: video.url,
+                                        videoId:
+                                          new URL(video.url).searchParams.get(
+                                            "v",
+                                          ) ?? undefined,
+                                      })
+                                    }
                                   >
                                     Watch on YouTube
-                                    <ArrowUpRight className="size-4" />
+                                    <ArrowUpRight className="size-4" />{" "}
                                   </a>
                                 )}
                               </div>
