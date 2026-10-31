@@ -192,6 +192,11 @@ export default function MusicSection() {
                                     waveformUrl={single.waveform}
                                     title={single.name}
                                     barCount={barCount}
+                                    audioUrl={
+                                      "audioUrl" in single
+                                        ? single.audioUrl
+                                        : undefined
+                                    }
                                   />
                                 </ScrollView>
                               )}

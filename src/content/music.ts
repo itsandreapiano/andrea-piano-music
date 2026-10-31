@@ -5,6 +5,7 @@ export const SINGLES_LIST = [
     tags: ["The Alqemist"],
     url: "https://open.spotify.com/track/3NtU2lcvfcn6oMwSApx7oP?si=b953a31af9e14cf9",
     soundcloudUrl: "https://soundcloud.com/itsandreapiano/strip-makao",
+    audioUrl: "/audio/strip-makao.mp3",
     waveform: "/waveforms/strip-makao.json",
   },
   {
@@ -16,7 +17,7 @@ export const SINGLES_LIST = [
     waveform: "/waveforms/beautiful-mistake.json",
   },
   {
-    name: "Off the Road",
+    name: "Off the Road", 
     year: 2026,
     tags: ["The Alqemist"],
     url: "https://open.spotify.com/track/6ojT5LQT1lq2rmdOuZQuUL",
