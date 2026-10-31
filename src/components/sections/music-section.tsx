@@ -148,11 +148,13 @@ export default function MusicSection() {
                           <div className="grid grid-cols-1 gap-8 md:grid-cols-[200px_minmax(0,1fr)] md:items-center lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
                             {/* Album artwork */}
                             <ScrollView>
-                              <div className="flex justify-center md:justify-start">
-                                <SoundCloudArtwork
-                                  trackUrl={single.soundcloudUrl}
-                                  title={single.name}
-                                />
+                              <div className="flex w-full justify-center md:justify-start">
+                                <div className="w-full sm:max-w-[380px] md:max-w-none">
+                                  <SoundCloudArtwork
+                                    trackUrl={single.soundcloudUrl}
+                                    title={single.name}
+                                  />
+                                </div>
                               </div>
                             </ScrollView>
 

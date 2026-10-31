@@ -52,7 +52,8 @@ export default function SoundCloudArtwork({
   }, [trackUrl]);
 
   return (
-    <div className="bg-muted aspect-square w-48 overflow-hidden rounded-xl md:w-full">
+    <div className="bg-muted aspect-square w-full overflow-hidden rounded-xl">
+      {" "}
       {artwork ? (
         <img
           src={artwork}

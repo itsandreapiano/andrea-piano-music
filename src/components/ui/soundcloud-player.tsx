@@ -92,13 +92,8 @@ function loadSoundCloudAPI(): Promise<WidgetAPI> {
         return;
       }
 
-      script.addEventListener("load", onLoad, {
-        once: true,
-      });
-
-      script.addEventListener("error", onError, {
-        once: true,
-      });
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", onError, { once: true });
 
       if (!existing) {
         script.src = "https://w.soundcloud.com/player/api.js";
@@ -186,7 +181,6 @@ export default function SoundCloudPlayer({
   barCount = 100,
 }: SoundCloudPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const widgetRef = useRef<SoundCloudWidget | null>(null);
 
   const analyticsRef = useRef<ReturnType<typeof createSongAnalytics> | null>(
@@ -209,9 +203,7 @@ export default function SoundCloudPlayer({
   const [duration, setDuration] = useState(0);
 
   const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
-
   const [previewProgress, setPreviewProgress] = useState<number | null>(null);
-
   const [error, setError] = useState<string | null>(null);
 
   // Keep media consent synchronized with the cookie banner.
@@ -223,12 +215,10 @@ export default function SoundCloudPlayer({
     updateConsent();
 
     window.addEventListener("cookie-consent-updated", updateConsent);
-
     window.addEventListener("storage", updateConsent);
 
     return () => {
       window.removeEventListener("cookie-consent-updated", updateConsent);
-
       window.removeEventListener("storage", updateConsent);
     };
   }, []);
@@ -424,7 +414,6 @@ export default function SoundCloudPlayer({
           }
 
           positionRef.current = data.currentPosition;
-
           timestampRef.current = performance.now();
 
           analytics.progress(data.currentPosition);
@@ -591,6 +580,8 @@ export default function SoundCloudPlayer({
     return () => cancelAnimationFrame(frame);
   }, [mediaConsent]);
 
+  // Request playback directly from the user's interaction.
+  // SoundCloud events are the source of truth for playback state.
   const togglePlayback = useCallback(() => {
     const widget = widgetRef.current;
     const iframe = iframeRef.current;
@@ -607,30 +598,14 @@ export default function SoundCloudPlayer({
     }
 
     if (playingRef.current) {
-      positionRef.current = Math.min(
-        durationRef.current || Infinity,
-        positionRef.current + (performance.now() - timestampRef.current),
-      );
-
-      playingRef.current = false;
-      setPlaying(false);
-      setPosition(positionRef.current);
-
+      // Let the PAUSE event confirm the paused state.
       widget.pause();
-    } else {
-      playingRef.current = true;
-      timestampRef.current = performance.now();
-
-      setPlaying(true);
-      widget.play();
-
-      for (const player of activePlayers) {
-        if (player.widget === widget) {
-          pauseOtherPlayers(player);
-          break;
-        }
-      }
+      return;
     }
+
+    // Do not set playingRef or setPlaying here.
+    // Wait for SoundCloud's PLAY event.
+    widget.play();
   }, [ready, error, mediaConsent]);
 
   const seek = useCallback(
@@ -742,6 +717,7 @@ export default function SoundCloudPlayer({
       aria-label={`Audio player for ${title}`}
       className="relative w-full"
     >
+      {/* Hidden SoundCloud iframe */}
       {mediaConsent && trackUrl && (
         <div
           aria-hidden="true"
