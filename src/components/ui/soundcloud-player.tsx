@@ -220,7 +220,6 @@ export default function AudioPlayer({
   // Smooth waveform animation.
   useEffect(() => {
     let frame = 0;
-    let lastSync = 0;
 
     const animate = (now: number) => {
       const audio = audioRef.current;
@@ -231,29 +230,13 @@ export default function AudioPlayer({
         if (Number.isFinite(durationMs) && durationMs > 0) {
           const clock = clockRef.current;
 
-          let predictedPosition = clock.position;
-
-          if (clock.playing) {
-            predictedPosition += now - clock.timestamp;
-          }
-
-          predictedPosition = clamp(predictedPosition, 0, durationMs);
+          const predictedPosition = clamp(
+            clock.position + (clock.playing ? now - clock.timestamp : 0),
+            0,
+            durationMs,
+          );
 
           updateVisuals(predictedPosition, durationMs);
-
-          // Reconcile with native playback periodically.
-          if (now - lastSync >= 250) {
-            lastSync = now;
-
-            const actualPosition = audio.currentTime * 1000;
-            const difference = actualPosition - predictedPosition;
-
-            // Avoid resetting the visual clock for tiny
-            // fluctuations in Safari's reported currentTime.
-            if (Math.abs(difference) > 120) {
-              syncClock();
-            }
-          }
         }
       }
 
@@ -263,7 +246,7 @@ export default function AudioPlayer({
     frame = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(frame);
-  }, [syncClock, updateVisuals]);
+  }, [updateVisuals]);
 
   // Reset on source changes.
   useEffect(() => {
@@ -512,25 +495,10 @@ export default function AudioPlayer({
           );
         }}
         onTimeUpdate={(event) => {
-          const audio = event.currentTarget;
-          const ms = audio.currentTime * 1000;
+          const ms = event.currentTarget.currentTime * 1000;
 
           setPosition(ms);
-
           analyticsRef.current?.progress(ms);
-
-          // Resync after actual playback updates.
-          if (!draggingRef.current) {
-            const predicted =
-              clockRef.current.position +
-              (clockRef.current.playing
-                ? performance.now() - clockRef.current.timestamp
-                : 0);
-
-            if (Math.abs(ms - predicted) > 120) {
-              syncClock();
-            }
-          }
         }}
         onSeeking={syncClock}
         onSeeked={syncClock}
