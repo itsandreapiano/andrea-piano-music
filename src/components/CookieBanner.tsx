@@ -20,7 +20,7 @@ const STORAGE_KEY = "cookie-consent";
 const CONSENT_EVENT = "cookie-consent-updated";
 const SETTINGS_EVENT = "open-cookie-settings";
 
-const CONSENT_VERSION = 3;
+const CONSENT_VERSION = 4;
 
 const DEFAULT_CONSENT: CookieConsent = {
   necessary: true,
@@ -193,8 +193,8 @@ export function CookieBanner() {
           <>
             <p className="text-muted-foreground mb-5 text-sm leading-relaxed">
               This website uses essential technologies and optional services for
-              analytics and embedded media. You can choose which technologies to
-              allow. Learn more in the{" "}
+              analytics and embedded YouTube videos. You can choose which
+              technologies to allow. Learn more in the{" "}
               <Link
                 href="/privacy"
                 className="text-foreground cursor-pointer underline underline-offset-4"
@@ -254,7 +254,7 @@ export function CookieBanner() {
 
               <PreferenceRow
                 title="Analytics"
-                description="Allows Google Analytics 4 to measure website visits, interactions, and traffic sources. Google may process online identifiers and technical information."
+                description="Allows Google Analytics 4 to measure website visits, interactions, music playback activity, and traffic sources. Google may process online identifiers and technical information."
                 checked={preferences.analytics}
                 onChange={(analytics) =>
                   setPreferences((prev) => ({
@@ -266,7 +266,7 @@ export function CookieBanner() {
 
               <PreferenceRow
                 title="Third-party media"
-                description="Allows embedded YouTube videos and SoundCloud audio playback. These providers may process technical information and use cookies or similar technologies."
+                description="Allows embedded YouTube videos. YouTube may process technical information and use cookies or similar technologies."
                 checked={preferences.media}
                 onChange={(media) =>
                   setPreferences((prev) => ({

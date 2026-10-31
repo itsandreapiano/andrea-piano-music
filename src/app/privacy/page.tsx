@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_EMAIL = "itsandreapiano@gmail.com";
-const LAST_UPDATED = "October 25, 2026";
+const LAST_UPDATED = "October 31, 2026";
 
 const emailLink = `mailto:${CONTACT_EMAIL}`;
 
@@ -181,9 +181,11 @@ export default function PrivacyPage() {
               <div>
                 <h3 className="font-semibold">Embedded music and videos</h3>
                 <p className="text-muted-foreground mt-1">
-                  I enable third-party SoundCloud and YouTube players when you
-                  choose to allow third-party media. The legal basis for
-                  consent-dependent processing is Article 6(1)(a) GDPR.
+                  Music is played through a native HTML5 audio player using
+                  audio files hosted on this website. Embedded YouTube videos
+                  are enabled only when you allow third-party media. The legal
+                  basis for consent-dependent processing is Article 6(1)(a)
+                  GDPR.
                 </p>
               </div>
 
@@ -369,62 +371,52 @@ export default function PrivacyPage() {
           {/* 7 */}
           <section>
             <h2 className="mb-4 text-2xl font-semibold">
-              7. SoundCloud and YouTube
+              7. Music and YouTube videos
             </h2>
 
             <p className="text-muted-foreground">
-              My website includes music and video content provided through
-              SoundCloud and YouTube.
+              My website features music played through a native HTML5 audio
+              player using locally hosted audio files, as well as video content
+              embedded from YouTube.
             </p>
 
             <p className="text-muted-foreground mt-4">
-              The embedded SoundCloud audio player and YouTube video player are
-              loaded only after you enable the{" "}
+              Listening to music through the website's audio player does not
+              require connecting to third-party music streaming services. Audio
+              playback does not require third-party media consent.
+            </p>
+
+            <p className="text-muted-foreground mt-4">
+              Embedded YouTube videos are loaded only after you enable the{" "}
               <strong className="text-foreground">Third-party media</strong>{" "}
               preference in the cookie settings.
             </p>
 
             <p className="text-muted-foreground mt-4">
-              Before you enable this preference, the embedded players remain
-              blocked and do not initialize their playback services. You can
-              still browse the website and view available release information
-              without enabling third-party media.
-            </p>
-
-            <p className="text-muted-foreground mt-4">
-              Once enabled, SoundCloud and YouTube may receive technical
-              information, including your IP address, browser details, the
-              content requested, and information about your interaction with
-              their services. They may also use cookies or similar technologies
-              in accordance with their own policies.
+              Once enabled, YouTube may receive technical information, including
+              your IP address, browser details, requested content, and
+              interactions with its services. YouTube may also use cookies or
+              similar technologies in accordance with Google's privacy policies.
             </p>
 
             <p className="text-muted-foreground mt-4">
               You can withdraw third-party media consent at any time through
-              Cookie Settings. Withdrawing consent prevents the embedded players
-              from continuing to operate on this website.
+              Cookie Settings. Withdrawing consent prevents consent-dependent
+              YouTube embeds from loading or continuing to operate on this
+              website.
             </p>
 
             <p className="text-muted-foreground mt-4">
-              For additional information, please review the privacy policies of{" "}
-              <a
-                href="https://soundcloud.com/pages/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground"
-              >
-                SoundCloud
-              </a>{" "}
-              and{" "}
+              For more information, please review{" "}
               <a
                 href="https://policies.google.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground"
+                className="text-foreground underline underline-offset-4"
               >
-                Google
+                Google's Privacy Policy
               </a>
-              , which operates YouTube.
+              .
             </p>
           </section>
 
@@ -451,6 +443,14 @@ export default function PrivacyPage() {
               pages visited, interactions with the website, approximate
               geographic location, device and browser information, session
               information, and online identifiers.
+            </p>
+
+            <p className="text-muted-foreground mt-4">
+              When you enable Analytics, I may also collect information about
+              how you interact with my music player, including playback starts,
+              pauses, listening progress, seeking, and completed tracks. These
+              events help me understand how visitors engage with my music. Music
+              playback remains available even if you decline Analytics.
             </p>
 
             <p className="text-muted-foreground mt-4">
@@ -512,18 +512,19 @@ export default function PrivacyPage() {
               <div>
                 <h3 className="font-semibold">Analytics</h3>
                 <p className="text-muted-foreground mt-1">
-                  Optional analytics technologies help measure website traffic
-                  and usage. They remain disabled unless you explicitly enable
-                  Analytics.
+                  Optional analytics technologies help measure website traffic,
+                  interactions, and music playback activity. They remain
+                  disabled unless you explicitly enable Analytics.
                 </p>
               </div>
 
               <div>
                 <h3 className="font-semibold">Third-party media</h3>
                 <p className="text-muted-foreground mt-1">
-                  This category enables embedded SoundCloud audio and YouTube
-                  video players. It remains disabled unless you explicitly
-                  enable Third-party media.
+                  This category enables embedded YouTube video players. It
+                  remains disabled unless you explicitly enable Third-party
+                  media. Locally hosted audio playback does not require this
+                  preference.
                 </p>
               </div>
             </div>
@@ -725,8 +726,7 @@ export default function PrivacyPage() {
 
             <p className="text-muted-foreground">
               This website may contain links to third-party platforms, including
-              Spotify, SoundCloud, YouTube, Instagram, and other external
-              services.
+              Spotify, YouTube, Instagram, and other external services.
             </p>
 
             <p className="text-muted-foreground mt-4">
