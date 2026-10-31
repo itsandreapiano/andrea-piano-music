@@ -7,8 +7,8 @@ import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 
 export default function HeroSection() {
   return (
-    <section className="relative flex min-h-svh items-center justify-center overflow-hidden bg-black text-white">
-      
+    <section className="relative flex h-full items-center justify-center overflow-hidden bg-black text-white">
+      {" "}
       {/* Background video */}
       <div className="absolute inset-0 z-0">
         <video
@@ -30,7 +30,6 @@ export default function HeroSection() {
         {/* Gradient for depth */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
       </div>
-
       {/* Hero content */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-6 text-center">
         <TextEffect
