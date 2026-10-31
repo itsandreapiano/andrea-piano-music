@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+
+import type {
+  PointerEvent as ReactPointerEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+
 import { createSongAnalytics } from "@/lib/songAnalytics";
 
 type WaveformData = {
@@ -14,8 +19,8 @@ type AudioPlayerProps = {
   audioUrl: string;
   waveformUrl: string;
   title?: string;
-  trackUrl?: string;
   barCount?: number;
+  trackUrl?: string;
 };
 
 function formatTime(ms: number): string {
@@ -26,8 +31,14 @@ function formatTime(ms: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function normalizeWaveform(data: WaveformData, barCount: number): number[] {
-  if (!data.samples.length || data.height <= 0) return [];
+  if (!data.samples.length || data.height <= 0) {
+    return [];
+  }
 
   return Array.from({ length: barCount }, (_, index) => {
     const start = Math.floor((index / barCount) * data.samples.length);
@@ -42,12 +53,11 @@ function normalizeWaveform(data: WaveformData, barCount: number): number[] {
     const average =
       segment.reduce((sum, value) => sum + value, 0) / segment.length;
 
-    const normalized = Math.max(0, Math.min(1, average / data.height));
+    const normalized = clamp(average / data.height, 0, 1);
 
     const contrast = Math.pow(normalized, 5.3);
-    const heightBoost = 1.8;
 
-    return Math.max(3, Math.min(100, contrast * 100 * heightBoost));
+    return clamp(contrast * 180, 3, 100);
   });
 }
 
@@ -55,25 +65,37 @@ export default function AudioPlayer({
   audioUrl,
   waveformUrl,
   title = "Audio track",
-  trackUrl,
   barCount = 100,
+  trackUrl,
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const timestampRef = useRef<HTMLSpanElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
 
   const analyticsRef = useRef<ReturnType<typeof createSongAnalytics> | null>(
     null,
   );
 
   const draggingRef = useRef(false);
+  const activePointerRef = useRef<number | null>(null);
+  const previewRef = useRef(0);
   const playingRef = useRef(false);
+
+  // Animation clock used to interpolate between audio samples.
+  const clockRef = useRef({
+    position: 0,
+    timestamp: 0,
+    playing: false,
+  });
 
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
-  const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [previewProgress, setPreviewProgress] = useState<number | null>(null);
-  const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
+  const [position, setPosition] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
 
   const safeBarCount = Math.max(
     1,
@@ -85,11 +107,46 @@ export default function AudioPlayer({
     [waveformData, safeBarCount],
   );
 
-  const bars = waveform.length
-    ? waveform
-    : Array.from({ length: safeBarCount }, () => 8);
+  const bars = useMemo(
+    () =>
+      waveform.length
+        ? waveform
+        : Array.from({ length: safeBarCount }, () => 8),
+    [waveform, safeBarCount],
+  );
 
-  // Load waveform data independently of SoundCloud.
+  const updateVisuals = useCallback(
+    (positionMs: number, durationMs: number) => {
+      const percentage =
+        durationMs > 0 ? clamp((positionMs / durationMs) * 100, 0, 100) : 0;
+
+      if (progressRef.current) {
+        progressRef.current.style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
+      }
+
+      if (timestampRef.current) {
+        const formatted = formatTime(positionMs);
+
+        if (timestampRef.current.textContent !== formatted) {
+          timestampRef.current.textContent = formatted;
+        }
+      }
+    },
+    [],
+  );
+
+  const syncClock = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    clockRef.current = {
+      position: audio.currentTime * 1000,
+      timestamp: performance.now(),
+      playing: !audio.paused && !audio.ended,
+    };
+  }, []);
+
+  // Load local waveform JSON.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -100,6 +157,7 @@ export default function AudioPlayer({
         if (!response.ok) {
           throw new Error(`Waveform HTTP ${response.status}`);
         }
+
         return response.json();
       })
       .then((data: WaveformData) => {
@@ -121,7 +179,7 @@ export default function AudioPlayer({
     return () => controller.abort();
   }, [waveformUrl]);
 
-  // Preserve existing song analytics.
+  // Analytics.
   useEffect(() => {
     const analytics = createSongAnalytics({
       title,
@@ -139,7 +197,7 @@ export default function AudioPlayer({
     };
   }, [title, trackUrl, audioUrl]);
 
-  // When another track starts, pause this one.
+  // Pause other players when one starts.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -159,15 +217,44 @@ export default function AudioPlayer({
     };
   }, []);
 
-  // Smooth waveform progress between native timeupdate events.
+  // Smooth waveform animation.
   useEffect(() => {
     let frame = 0;
+    let lastSync = 0;
 
-    const animate = () => {
+    const animate = (now: number) => {
       const audio = audioRef.current;
 
-      if (audio && !audio.paused && !draggingRef.current) {
-        setPosition(audio.currentTime * 1000);
+      if (audio && !draggingRef.current) {
+        const durationMs = audio.duration * 1000;
+
+        if (Number.isFinite(durationMs) && durationMs > 0) {
+          const clock = clockRef.current;
+
+          let predictedPosition = clock.position;
+
+          if (clock.playing) {
+            predictedPosition += now - clock.timestamp;
+          }
+
+          predictedPosition = clamp(predictedPosition, 0, durationMs);
+
+          updateVisuals(predictedPosition, durationMs);
+
+          // Reconcile with native playback periodically.
+          if (now - lastSync >= 250) {
+            lastSync = now;
+
+            const actualPosition = audio.currentTime * 1000;
+            const difference = actualPosition - predictedPosition;
+
+            // Avoid resetting the visual clock for tiny
+            // fluctuations in Safari's reported currentTime.
+            if (Math.abs(difference) > 120) {
+              syncClock();
+            }
+          }
+        }
       }
 
       frame = requestAnimationFrame(animate);
@@ -176,9 +263,30 @@ export default function AudioPlayer({
     frame = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [syncClock, updateVisuals]);
 
-  // iOS: play() must happen directly inside the tap handler.
+  // Reset on source changes.
+  useEffect(() => {
+    setReady(false);
+    setPlaying(false);
+    setDuration(0);
+    setPosition(0);
+    setError(null);
+
+    draggingRef.current = false;
+    activePointerRef.current = null;
+    playingRef.current = false;
+
+    clockRef.current = {
+      position: 0,
+      timestamp: performance.now(),
+      playing: false,
+    };
+
+    updateVisuals(0, 0);
+  }, [audioUrl, updateVisuals]);
+
+  // iPhone-safe playback.
   const togglePlayback = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -190,87 +298,160 @@ export default function AudioPlayer({
 
     setError(null);
 
+    // Must execute synchronously within the user gesture.
     void audio.play().catch((err: unknown) => {
       console.error("Audio playback failed:", err);
       setError("Unable to play this track.");
     });
   }, []);
 
-  const seek = useCallback((percentage: number) => {
-    const audio = audioRef.current;
+  // Native seek.
+  const seek = useCallback(
+    (percentage: number) => {
+      const audio = audioRef.current;
 
-    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
-      return;
-    }
+      if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+        return;
+      }
 
-    const clamped = Math.max(0, Math.min(100, percentage));
+      const nextTime = (clamp(percentage, 0, 100) / 100) * audio.duration;
 
-    const nextTime = (clamped / 100) * audio.duration;
+      analyticsRef.current?.seek();
 
-    analyticsRef.current?.seek();
+      audio.currentTime = nextTime;
 
-    audio.currentTime = nextTime;
-    setPosition(nextTime * 1000);
-  }, []);
+      syncClock();
+
+      const positionMs = nextTime * 1000;
+
+      setPosition(positionMs);
+
+      updateVisuals(positionMs, audio.duration * 1000);
+    },
+    [syncClock, updateVisuals],
+  );
 
   const getPointerProgress = (event: ReactPointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
 
     if (rect.width <= 0) return 0;
 
-    return Math.max(
-      0,
-      Math.min(100, ((event.clientX - rect.left) / rect.width) * 100),
-    );
+    return clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100);
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+
     if (
-      !ready ||
-      duration <= 0 ||
+      !audio ||
+      !Number.isFinite(audio.duration) ||
+      audio.duration <= 0 ||
       (event.pointerType === "mouse" && event.button !== 0)
     ) {
       return;
     }
 
     draggingRef.current = true;
+    activePointerRef.current = event.pointerId;
 
     event.currentTarget.setPointerCapture(event.pointerId);
 
-    setPreviewProgress(getPointerProgress(event));
+    const percentage = getPointerProgress(event);
+
+    previewRef.current = percentage;
+
+    updateVisuals(
+      (percentage / 100) * audio.duration * 1000,
+      audio.duration * 1000,
+    );
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
+    if (!draggingRef.current || activePointerRef.current !== event.pointerId) {
+      return;
+    }
 
-    setPreviewProgress(getPointerProgress(event));
-  };
-
-  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
 
     const percentage = getPointerProgress(event);
 
-    draggingRef.current = false;
+    previewRef.current = percentage;
 
-    seek(percentage);
+    updateVisuals(
+      (percentage / 100) * audio.duration * 1000,
+      audio.duration * 1000,
+    );
+  };
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current || activePointerRef.current !== event.pointerId) {
+      return;
+    }
+
+    const percentage = getPointerProgress(event);
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    setPreviewProgress(null);
+    draggingRef.current = false;
+    activePointerRef.current = null;
+
+    seek(percentage);
   };
 
-  const handlePointerCancel = () => {
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (activePointerRef.current !== event.pointerId) {
+      return;
+    }
+
     draggingRef.current = false;
-    setPreviewProgress(null);
+    activePointerRef.current = null;
+
+    syncClock();
+
+    const audio = audioRef.current;
+
+    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+      updateVisuals(audio.currentTime * 1000, audio.duration * 1000);
+    }
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return;
+    }
+
+    const percentage = (audio.currentTime / audio.duration) * 100;
+
+    switch (event.key) {
+      case "ArrowRight":
+        event.preventDefault();
+        seek(percentage + 5);
+        break;
+
+      case "ArrowLeft":
+        event.preventDefault();
+        seek(percentage - 5);
+        break;
+
+      case "Home":
+        event.preventDefault();
+        seek(0);
+        break;
+
+      case "End":
+        event.preventDefault();
+        seek(100);
+        break;
+    }
   };
 
   const progress =
-    duration > 0 ? Math.max(0, Math.min(100, (position / duration) * 100)) : 0;
-
-  const displayedProgress = previewProgress ?? progress;
+    duration > 0 ? clamp((position / duration) * 100, 0, 100) : 0;
 
   return (
     <div
@@ -289,6 +470,7 @@ export default function AudioPlayer({
             setDuration(seconds * 1000);
             setReady(true);
             setError(null);
+            syncClock();
           }
         }}
         onDurationChange={(event) => {
@@ -304,6 +486,8 @@ export default function AudioPlayer({
           setPlaying(true);
           setError(null);
 
+          syncClock();
+
           analyticsRef.current?.play();
 
           window.dispatchEvent(
@@ -312,31 +496,56 @@ export default function AudioPlayer({
             }),
           );
         }}
-        onPause={() => {
+        onPause={(event) => {
           if (playingRef.current) {
             analyticsRef.current?.pause();
           }
 
           playingRef.current = false;
           setPlaying(false);
+
+          syncClock();
+
+          updateVisuals(
+            event.currentTarget.currentTime * 1000,
+            event.currentTarget.duration * 1000,
+          );
         }}
         onTimeUpdate={(event) => {
-          const ms = event.currentTarget.currentTime * 1000;
+          const audio = event.currentTarget;
+          const ms = audio.currentTime * 1000;
 
-          if (!draggingRef.current) {
-            setPosition(ms);
-          }
+          setPosition(ms);
 
           analyticsRef.current?.progress(ms);
+
+          // Resync after actual playback updates.
+          if (!draggingRef.current) {
+            const predicted =
+              clockRef.current.position +
+              (clockRef.current.playing
+                ? performance.now() - clockRef.current.timestamp
+                : 0);
+
+            if (Math.abs(ms - predicted) > 120) {
+              syncClock();
+            }
+          }
         }}
+        onSeeking={syncClock}
+        onSeeked={syncClock}
         onEnded={(event) => {
           playingRef.current = false;
+
           setPlaying(false);
           setPosition(0);
 
           analyticsRef.current?.finish();
 
           event.currentTarget.currentTime = 0;
+
+          syncClock();
+          updateVisuals(0, event.currentTarget.duration * 1000);
         }}
         onError={() => {
           playingRef.current = false;
@@ -347,7 +556,7 @@ export default function AudioPlayer({
       />
 
       <div className="relative flex items-center gap-3">
-        {/* Play / Pause button */}
+        {/* Play / Pause */}
         <button
           type="button"
           onClick={togglePlayback}
@@ -382,6 +591,7 @@ export default function AudioPlayer({
         {/* Waveform and timestamps */}
         <div className="min-w-0 flex-1">
           <div
+            ref={sliderRef}
             role="slider"
             tabIndex={ready && duration > 0 ? 0 : -1}
             aria-label={`Seek within ${title}`}
@@ -390,29 +600,7 @@ export default function AudioPlayer({
             aria-valuenow={Math.round(progress)}
             aria-valuetext={formatTime(position)}
             aria-disabled={!ready || duration <= 0}
-            onKeyDown={(event) => {
-              if (!ready || duration <= 0) return;
-
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                seek(progress + 5);
-              }
-
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                seek(progress - 5);
-              }
-
-              if (event.key === "Home") {
-                event.preventDefault();
-                seek(0);
-              }
-
-              if (event.key === "End") {
-                event.preventDefault();
-                seek(100);
-              }
-            }}
+            onKeyDown={handleKeyDown}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -425,18 +613,18 @@ export default function AudioPlayer({
                 <div
                   key={index}
                   className="min-w-0 flex-1 rounded-full bg-[#555555]"
-                  style={{
-                    height: `${height}%`,
-                  }}
+                  style={{ height: `${height}%` }}
                 />
               ))}
             </div>
 
             {/* Active waveform */}
             <div
+              ref={progressRef}
               className="pointer-events-none absolute inset-0 overflow-hidden"
               style={{
-                clipPath: `inset(0 ${100 - displayedProgress}% 0 0)`,
+                clipPath: "inset(0 100% 0 0)",
+                willChange: "clip-path",
               }}
             >
               <div className="absolute inset-0 flex items-center gap-[2px]">
@@ -444,9 +632,7 @@ export default function AudioPlayer({
                   <div
                     key={index}
                     className="min-w-0 flex-1 rounded-full bg-white"
-                    style={{
-                      height: `${height}%`,
-                    }}
+                    style={{ height: `${height}%` }}
                   />
                 ))}
               </div>
@@ -455,14 +641,7 @@ export default function AudioPlayer({
 
           {/* Timestamps */}
           <div className="mt-1 flex justify-between text-xs tabular-nums text-white/40">
-            <span>
-              {formatTime(
-                draggingRef.current && previewProgress !== null
-                  ? (previewProgress / 100) * duration
-                  : position,
-              )}
-            </span>
-
+            <span ref={timestampRef}>{formatTime(position)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
