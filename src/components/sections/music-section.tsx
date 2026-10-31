@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { SINGLES_LIST } from "@/content/music";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { trackMediaEvent } from "@/lib/mediaAnalytics";
-import AudioPlayer from "../ui/soundcloud-player";
+import AudioPlayer from "../ui/audio-player";
 import SingleArtwork from "../ui/soundcloud-artwork";
 
 const YEARS = [...new Set(SINGLES_LIST.map((single) => single.year))].sort(

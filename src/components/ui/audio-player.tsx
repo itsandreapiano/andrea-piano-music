@@ -82,6 +82,11 @@ export default function AudioPlayer({
   const previewRef = useRef(0);
   const playingRef = useRef(false);
 
+  const pointerStartRef = useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Animation clock used to interpolate between audio samples.
   const clockRef = useRef({
     position: 0,
@@ -334,28 +339,53 @@ export default function AudioPlayer({
       return;
     }
 
-    draggingRef.current = true;
     activePointerRef.current = event.pointerId;
 
-    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
 
-    const percentage = getPointerProgress(event);
+    // Mouse: allow immediate seeking.
+    // Touch: wait to determine the gesture.
+    if (event.pointerType === "mouse") {
+      draggingRef.current = true;
 
-    previewRef.current = percentage;
+      event.currentTarget.setPointerCapture(event.pointerId);
 
-    updateVisuals(
-      (percentage / 100) * audio.duration * 1000,
-      audio.duration * 1000,
-    );
+      const percentage = getPointerProgress(event);
+
+      previewRef.current = percentage;
+
+      updateVisuals(
+        (percentage / 100) * audio.duration * 1000,
+        audio.duration * 1000,
+      );
+    }
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current || activePointerRef.current !== event.pointerId) {
+    if (
+      activePointerRef.current !== event.pointerId ||
+      !pointerStartRef.current
+    ) {
       return;
     }
 
     const audio = audioRef.current;
     if (!audio) return;
+
+    const deltaX = event.clientX - pointerStartRef.current.x;
+    const deltaY = event.clientY - pointerStartRef.current.y;
+
+    if (!draggingRef.current) {
+      // Ignore small movements and vertical scrolling.
+      if (Math.abs(deltaX) < 12 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.5) {
+        return;
+      }
+
+      draggingRef.current = true;
+    }
 
     const percentage = getPointerProgress(event);
 
@@ -368,11 +398,14 @@ export default function AudioPlayer({
   };
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current || activePointerRef.current !== event.pointerId) {
+    if (activePointerRef.current !== event.pointerId) {
       return;
     }
 
-    const percentage = getPointerProgress(event);
+    if (draggingRef.current) {
+      const percentage = getPointerProgress(event);
+      seek(percentage);
+    }
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -380,17 +413,15 @@ export default function AudioPlayer({
 
     draggingRef.current = false;
     activePointerRef.current = null;
-
-    seek(percentage);
+    pointerStartRef.current = null;
   };
 
   const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (activePointerRef.current !== event.pointerId) {
-      return;
-    }
+    if (activePointerRef.current !== event.pointerId) return;
 
     draggingRef.current = false;
     activePointerRef.current = null;
+    pointerStartRef.current = null;
 
     syncClock();
 
@@ -573,7 +604,7 @@ export default function AudioPlayer({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerCancel}
-            className="relative h-20 w-full cursor-pointer touch-none select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            className="relative h-20 w-full cursor-pointer touch-pan-y select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           >
             {/* Inactive waveform */}
             <div className="absolute inset-0 flex items-center gap-[4px]">
