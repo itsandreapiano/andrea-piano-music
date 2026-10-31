@@ -5,9 +5,9 @@ import { ScrollView } from "@/components/scroll-view";
 import { Badge } from "@/components/ui/badge";
 import { SINGLES_LIST } from "@/content/music";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
-import SoundCloudArtwork from "../ui/soundcloud-artwork";
 import { trackMediaEvent } from "@/lib/mediaAnalytics";
 import AudioPlayer from "../ui/soundcloud-player";
+import SingleArtwork from "../ui/soundcloud-artwork";
 
 const YEARS = [...new Set(SINGLES_LIST.map((single) => single.year))].sort(
   (a, b) => b - a,
@@ -150,8 +150,8 @@ export default function MusicSection() {
                             <ScrollView>
                               <div className="flex w-full justify-center md:justify-start">
                                 <div className="w-full sm:max-w-[380px] md:max-w-none">
-                                  <SoundCloudArtwork
-                                    trackUrl={single.soundcloudUrl}
+                                  <SingleArtwork
+                                    artworkUrl={single.artworkUrl}
                                     title={single.name}
                                   />
                                 </div>
@@ -182,7 +182,7 @@ export default function MusicSection() {
                               </ScrollView>
 
                               {/* Interactive SoundCloud waveform */}
-                              {single.soundcloudUrl && (
+                              {single.audioUrl && (
                                 <ScrollView
                                   delay={0.1}
                                   viewMargin="0px 0px -125px 0px"
@@ -192,7 +192,7 @@ export default function MusicSection() {
                                     waveformUrl={single.waveform}
                                     title={single.name}
                                     barCount={barCount}
-                                    trackUrl={single.soundcloudUrl}
+                                    trackUrl={single.audioUrl}
                                   />
                                 </ScrollView>
                               )}

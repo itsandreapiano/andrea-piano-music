@@ -1,69 +1,23 @@
-"use client";
+import Image from "next/image";
 
-import { useEffect, useState } from "react";
-
-type SoundCloudArtworkProps = {
-  trackUrl: string;
+type SingleArtworkProps = {
+  artworkUrl: string;
   title: string;
 };
 
-type SoundCloudOEmbed = {
-  thumbnail_url?: string;
-};
-
-export default function SoundCloudArtwork({
-  trackUrl,
+export default function SingleArtwork({
+  artworkUrl,
   title,
-}: SoundCloudArtworkProps) {
-  const [artwork, setArtwork] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setArtwork(null);
-
-    const params = new URLSearchParams({
-      url: trackUrl,
-      format: "json",
-    });
-
-    fetch(`https://soundcloud.com/oembed?${params.toString()}`, {
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load SoundCloud artwork");
-        }
-
-        return response.json() as Promise<SoundCloudOEmbed>;
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setArtwork(data.thumbnail_url ?? null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-
-        console.error("SoundCloud artwork error:", error);
-      });
-
-    return () => controller.abort();
-  }, [trackUrl]);
-
+}: SingleArtworkProps) {
   return (
-    <div className="bg-muted aspect-square w-full overflow-hidden rounded-xl">
-      {" "}
-      {artwork ? (
-        <img
-          src={artwork}
-          alt={`${title} cover artwork`}
-          loading="lazy"
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="bg-muted h-full w-full animate-pulse" />
-      )}
+    <div className="bg-muted relative aspect-square w-full overflow-hidden rounded-xl">
+      <Image
+        src={artworkUrl}
+        alt={`${title} cover artwork`}
+        fill
+        sizes="(max-width: 640px) 100vw, (max-width: 768px) 380px, 240px"
+        className="object-cover"
+      />
     </div>
   );
 }
