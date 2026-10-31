@@ -382,9 +382,9 @@ export default function SoundCloudPlayer({
 
           setPlaying(true);
 
-          if (player) {
-            pauseOtherPlayers(player);
-          }
+          // if (player) {
+          //   pauseOtherPlayers(player);
+          // }
         });
 
         widget.bind(Widget.Events.PAUSE, () => {
