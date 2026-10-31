@@ -8,7 +8,7 @@ export default function ContentSection() {
       <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-12">
         <div className="space-y-6 md:space-y-12">
           <ScrollView>
-            <h2 className="text-balance text-4xl font-medium lg:text-5xl">
+            <h2 className="text-balance text-4xl font-medium lg:text-5xl mt-8">
               Who I am
             </h2>
           </ScrollView>

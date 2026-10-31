@@ -239,7 +239,7 @@ export default function Contact() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-12 md:grid-cols-2 md:gap-12 lg:grid-cols-5 lg:gap-24">
           <div className="lg:col-span-2">
-            <div className="md:pr-6 lg:pr-0">
+            <div className="md:pr-6 lg:pr-0 mt-8">
               <ScrollView>
                 <h2 className="text-4xl font-semibold lg:text-5xl">
                   Get in touch
@@ -253,7 +253,7 @@ export default function Contact() {
                   musicians, exploring new collaborations, and seeing where the
                   flow can take us. Got something in mind?{" "}
                   <span className="text-foreground">
-                    I&apos;d love to hear from you.
+                    I&apos;d love to hear from you!
                   </span>
                 </p>
               </ScrollView>

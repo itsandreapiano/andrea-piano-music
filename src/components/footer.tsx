@@ -66,7 +66,7 @@ export default function FooterSection() {
         <ScrollView stagger delay={0.1}>
           <nav
             aria-label="Footer navigation"
-            className="my-8 flex flex-wrap justify-center gap-x-6 gap-y-4 text-sm"
+            className="my-8 flex flex-wrap justify-center gap-x-5 gap-y-4 text-sm"
           >
             {NAV_LINKS.filter((link) => link.visible).map((link) => (
               <motion.div

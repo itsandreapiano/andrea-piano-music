@@ -89,7 +89,7 @@ export default function VideosSection() {
 
           <ScrollView delay={0.2}>
             <p className="text-muted-foreground">
-              Discover my music videos, lyric videos, and visual projects.
+              Discover my music videos, lyric videos, and visuals.
               <br />
               Watch directly here or open them on YouTube.
             </p>

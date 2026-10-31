@@ -48,8 +48,7 @@ export default async function NewsSection() {
 
           <ScrollView delay={0.2}>
             <p className="text-muted-foreground">
-              New music, exciting projects, and everything in between.
-              <br />
+              New music, exciting projects, and surprises. <br />
               What&apos;s boiling in the pot?
             </p>
           </ScrollView>

@@ -29,11 +29,10 @@ export default function SupportSection() {
             <p className="text-muted-foreground">
               Love what I do?
               <br />
-              Coffee is my secret fuel for turning wild ideas into cool songs.
-              <br />
+              FYI, coffee is what fuels my wildest ideas. 😉 <br />
               <em>
-                Chip in for a virtual cup, preferably an espresso macchiato with
-                oat milk.
+                Chip in for a virtual cup, <br />
+                preferably an espresso macchiato with oat milk.
               </em>
             </p>
           </ScrollView>
