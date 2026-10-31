@@ -192,6 +192,19 @@ export default function SoundCloudPlayer({
   const playingRef = useRef(false);
   const timestampRef = useRef(0);
 
+  // One automatic retry for an unexpected pause immediately after a user tap.
+  const startupTimeRef = useRef(0);
+  const startupRetryRef = useRef(false);
+  const manualPauseRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelRetry = () => {
+    if (retryTimerRef.current !== null) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
+
   const draggingRef = useRef(false);
   const dragProgressRef = useRef(0);
 
@@ -327,6 +340,9 @@ export default function SoundCloudPlayer({
           widget,
           iframe,
           onPause: () => {
+            manualPauseRef.current = true;
+            startupTimeRef.current = 0;
+            cancelRetry();
             if (!active || !playingRef.current) {
               return;
             }
@@ -391,6 +407,43 @@ export default function SoundCloudPlayer({
         widget.bind(Widget.Events.PAUSE, () => {
           if (!active) return;
 
+          const elapsed = performance.now() - startupTimeRef.current;
+          const shouldRetry =
+            !manualPauseRef.current &&
+            !startupRetryRef.current &&
+            startupTimeRef.current > 0 &&
+            elapsed >= 0 &&
+            elapsed < 1500;
+
+          if (shouldRetry) {
+            startupRetryRef.current = true;
+            // The interruption is real, even though the UI stays on Pause.
+            analytics.pause();
+            if (playingRef.current) {
+              positionRef.current = Math.min(
+                durationRef.current || Infinity,
+                positionRef.current +
+                  (performance.now() - timestampRef.current),
+              );
+            }
+            timestampRef.current = performance.now();
+            cancelRetry();
+            retryTimerRef.current = setTimeout(() => {
+              retryTimerRef.current = null;
+              if (
+                !active ||
+                manualPauseRef.current ||
+                widgetRef.current !== widget ||
+                !isIframeAvailable(iframe)
+              )
+                return;
+              widget.play();
+            }, 100);
+            return;
+          }
+
+          cancelRetry();
+          startupTimeRef.current = 0;
           analytics.pause();
 
           if (playingRef.current) {
@@ -423,6 +476,8 @@ export default function SoundCloudPlayer({
         widget.bind(Widget.Events.FINISH, () => {
           if (!active) return;
 
+          cancelRetry();
+          startupTimeRef.current = 0;
           analytics.finish();
 
           playingRef.current = false;
@@ -437,6 +492,8 @@ export default function SoundCloudPlayer({
         widget.bind(Widget.Events.ERROR, () => {
           if (!active) return;
 
+          cancelRetry();
+          startupTimeRef.current = 0;
           analytics.pause();
 
           playingRef.current = false;
@@ -460,6 +517,9 @@ export default function SoundCloudPlayer({
 
     return () => {
       active = false;
+      cancelRetry();
+      startupTimeRef.current = 0;
+      manualPauseRef.current = true;
 
       analytics.destroy();
 
@@ -507,6 +567,10 @@ export default function SoundCloudPlayer({
     positionRef.current = 0;
     durationRef.current = 0;
     playingRef.current = false;
+    cancelRetry();
+    startupTimeRef.current = 0;
+    startupRetryRef.current = false;
+    manualPauseRef.current = false;
     draggingRef.current = false;
     timestampRef.current = performance.now();
 
@@ -599,13 +663,17 @@ export default function SoundCloudPlayer({
     }
 
     if (playingRef.current) {
-      // Let the PAUSE event confirm the paused state.
+      manualPauseRef.current = true;
+      startupTimeRef.current = 0;
+      cancelRetry();
       widget.pause();
       return;
     }
 
-    // Do not set playingRef or setPlaying here.
-    // Wait for SoundCloud's PLAY event.
+    manualPauseRef.current = false;
+    startupRetryRef.current = false;
+    startupTimeRef.current = performance.now();
+    // SoundCloud events remain the source of truth for playback state.
     widget.play();
   }, [ready, error, mediaConsent]);
 
