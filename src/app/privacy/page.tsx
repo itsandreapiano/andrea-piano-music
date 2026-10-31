@@ -381,9 +381,9 @@ export default function PrivacyPage() {
             </p>
 
             <p className="text-muted-foreground mt-4">
-              Listening to music through the website's audio player does not
-              require connecting to third-party music streaming services. Audio
-              playback does not require third-party media consent.
+              Listening to music through the website&apos;s audio player does
+              not require connecting to third-party music streaming services.
+              Audio playback does not require third-party media consent.
             </p>
 
             <p className="text-muted-foreground mt-4">
@@ -396,7 +396,8 @@ export default function PrivacyPage() {
               Once enabled, YouTube may receive technical information, including
               your IP address, browser details, requested content, and
               interactions with its services. YouTube may also use cookies or
-              similar technologies in accordance with Google's privacy policies.
+              similar technologies in accordance with Google&apos;s privacy
+              policies.
             </p>
 
             <p className="text-muted-foreground mt-4">
@@ -414,7 +415,7 @@ export default function PrivacyPage() {
                 rel="noopener noreferrer"
                 className="text-foreground underline underline-offset-4"
               >
-                Google's Privacy Policy
+                Google&apos;s Privacy Policy
               </a>
               .
             </p>
