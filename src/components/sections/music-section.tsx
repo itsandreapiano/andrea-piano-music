@@ -143,7 +143,7 @@ export default function MusicSection() {
                       {singles.map((single) => (
                         <article
                           key={single.url}
-                          className="border-border border-b py-10 last:border-b-0 md:py-12"
+                          className="border-border border-b pt-10 pb-20 first:pt-10 last:border-b-0 last:pb-10 md:py-12"
                         >
                           <div className="grid grid-cols-1 gap-8 md:grid-cols-[200px_minmax(0,1fr)] md:items-center lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
                             {/* Album artwork */}
@@ -199,7 +199,7 @@ export default function MusicSection() {
 
                               {/* Spotify CTA */}
                               <ScrollView delay={0.15}>
-                                <div className="border-border flex justify-center border-t pt-4 md:justify-start">
+                                <div className="border-border flex  border-t pt-4 md:justify-start">
                                   <a
                                     href={single.url}
                                     target="_blank"
