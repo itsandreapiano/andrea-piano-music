@@ -232,6 +232,7 @@ export default function SoundCloudPlayer({
     const params = new URLSearchParams({
       url: trackUrl,
       auto_play: "false",
+      single_active: "false",
       visual: "false",
       show_artwork: "false",
       show_comments: "false",
@@ -721,7 +722,7 @@ export default function SoundCloudPlayer({
       {mediaConsent && trackUrl && (
         <div
           aria-hidden="true"
-          className="relative h-[166px] w-full overflow-hidden md:pointer-events-none md:absolute md:bottom-0 md:left-0 md:opacity-0"
+          className="pointer-events-none absolute bottom-0 left-0 h-[166px] w-full overflow-hidden opacity-0"
         >
           <iframe
             ref={iframeRef}
@@ -729,7 +730,8 @@ export default function SoundCloudPlayer({
             title={`SoundCloud player for ${title}`}
             width="100%"
             height="166"
-            allow="autoplay; encrypted-media"
+            allow="autoplay; encrypted-media; fullscreen"
+            loading="eager"
             tabIndex={-1}
             className="border-0"
           />
