@@ -83,6 +83,7 @@ export const HeroHeader = () => {
                     <li key={index}>
                       <Link
                         href={item.href}
+                        onClick={() => setMenuState(false)}
                         className="text-muted-foreground hover:text-accent-foreground block duration-150"
                       >
                         <span>{item.name}</span>
@@ -109,8 +110,8 @@ export const HeroHeader = () => {
                     <Button
                       size="sm"
                       className={cn(
-                        "cursor-pointer",
-                        isScrolled ? "lg:inline-flex" : "hidden",
+                        "hidden cursor-pointer",
+                        isScrolled && "lg:inline-flex",
                       )}
                     >
                       Subscribe
