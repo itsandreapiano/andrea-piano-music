@@ -5,9 +5,9 @@ import { ScrollView } from "@/components/scroll-view";
 import { Badge } from "@/components/ui/badge";
 import { SINGLES_LIST } from "@/content/music";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
-import SoundCloudPlayer from "../ui/soundcloud-player";
 import SoundCloudArtwork from "../ui/soundcloud-artwork";
 import { trackMediaEvent } from "@/lib/mediaAnalytics";
+import AudioPlayer from "../ui/soundcloud-player";
 
 const YEARS = [...new Set(SINGLES_LIST.map((single) => single.year))].sort(
   (a, b) => b - a,
@@ -187,16 +187,12 @@ export default function MusicSection() {
                                   delay={0.1}
                                   viewMargin="0px 0px -125px 0px"
                                 >
-                                  <SoundCloudPlayer
-                                    trackUrl={single.soundcloudUrl}
+                                  <AudioPlayer
+                                    audioUrl={single.audioUrl}
                                     waveformUrl={single.waveform}
                                     title={single.name}
                                     barCount={barCount}
-                                    audioUrl={
-                                      "audioUrl" in single
-                                        ? single.audioUrl
-                                        : undefined
-                                    }
+                                    trackUrl={single.soundcloudUrl}
                                   />
                                 </ScrollView>
                               )}
