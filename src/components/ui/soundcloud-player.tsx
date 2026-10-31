@@ -382,9 +382,9 @@ export default function SoundCloudPlayer({
 
           setPlaying(true);
 
-          // if (player) {
-          //   pauseOtherPlayers(player);
-          // }
+          if (player) {
+            pauseOtherPlayers(player);
+          }
         });
 
         widget.bind(Widget.Events.PAUSE, () => {
@@ -721,7 +721,7 @@ export default function SoundCloudPlayer({
       {mediaConsent && trackUrl && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 h-[166px] w-full overflow-hidden opacity-0"
+          className="relative h-[166px] w-full overflow-hidden md:pointer-events-none md:absolute md:bottom-0 md:left-0 md:opacity-0"
         >
           <iframe
             ref={iframeRef}
